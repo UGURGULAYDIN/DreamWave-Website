@@ -16,18 +16,18 @@
 
 ## 🖼️ Uygulama Görselleri
 
-### 🏠 Ana Sayfa (index.html)
+### 🏠 Ana Sayfa
 ![Image](https://github.com/user-attachments/assets/76a0da7a-d64e-4b37-b40c-6e3e6d13e167)
 
-### 🎞️ Film Detay Sayfası (movie.html)
+### 🎞️ Film Detay Sayfası
 ![Image](https://github.com/user-attachments/assets/b7addb6a-973d-4688-a4c5-ce344b082a40)
 ![Image](https://github.com/user-attachments/assets/3ffe0527-d96a-41d7-bffb-d22614572d01)
 
-### 👤 Kullanıcı Profili (profile.html)
+### 👤 Kullanıcı Profili
 ![Image](https://github.com/user-attachments/assets/59b474ed-4710-421b-944f-47708537687c)
 ![Image](https://github.com/user-attachments/assets/23bba8f9-c222-457e-87e9-e7075c208f37)
 
-### 🔍 Arama Sayfası (search.html)
+### 🔍 Arama Sayfası
 ![Image](https://github.com/user-attachments/assets/719453b4-2e80-4419-8bf4-1b8b488adbd7)
 
 ### 🔐 Giriş ve Kayıt Sayfası
