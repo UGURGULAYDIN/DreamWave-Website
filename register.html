@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DreamWave - Kayıt Ol</title>
+    <link rel="shortcut icon" href="images/dreamwave.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">DreamWave</a>
+        </h1>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+            <a href="search.html">Keşfet</a>
+            <a href="profile.html">Profil</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <section class="form-container">
+            <h2>Kayıt Ol</h2>
+            <input type="text" id="username" placeholder="Kullanıcı Adı">
+            <input type="email" id="email" placeholder="E-posta">
+            <input type="password" id="password" placeholder="Şifre">
+            <button onclick="registerUser()">Kayıt Ol</button>
+            <p id="message" style="color: red;"></p>
+            <p>Zaten hesabın var mı? <a href="login.html" style="text-decoration: none;"><span
+                        style="color: #ff5733;">Giriş
+                        Yap</span></a></p>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 DreamWave | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <script>
+        function registerUser() {
+            const username = document.getElementById("username").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const message = document.getElementById("message");
+
+            if (!username || !email || !password) {
+                message.textContent = "Lütfen tüm alanları doldurun.";
+                return;
+            }
+
+            fetch("http://127.0.0.1:8000/api/register/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // Kayıt başarılıysa login sayfasına yönlendir
+                        window.location.href = "login.html";
+                    } else {
+                        return response.json().then(data => {
+                            message.textContent = data?.error || "Kayıt sırasında bir hata oluştu.";
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("Hata:", error);
+                    message.textContent = "Sunucuya bağlanılamadı.";
+                });
+        }
+    </script>
+
+</body>
+
+</html>

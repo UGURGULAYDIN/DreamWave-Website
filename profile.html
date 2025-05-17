@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DreamWave - Kullanıcı Profili</title>
+    <link rel="shortcut icon" href="images/dreamwave.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/style.css">
+
+    <style>
+        #update-message {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            width: auto;
+            max-width: 300px;
+            z-index: 1000;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            animation: slide-in 0.3s ease-out;
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            z-index: 10;
+            transition: background-color 0.2s ease;
+        }
+
+        .remove-btn:hover {
+            background-color: #cc0000;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <header>
+        <h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">DreamWave</a>
+        </h1>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+            <a href="search.html">Keşfet</a>
+            <a href="profile.html">Profil</a>
+            <a href="#" id="logout-btn" class="logout-btn" onclick="logoutUser()">Çıkış Yap</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <!-- Kullanıcı Profili -->
+        <section class="profile-container">
+            <img src="images/profile.jpg" alt="Kullanıcı Profil Resmi">
+            <h2 id="user-name">USER</h2>
+            <p id="user-username">Kullanıcı Adı: @user</p>
+            <p id="user-email">E-posta: user@email.com</p>
+            <a href="#" class="edit-profile-btn" onclick="openModal()">Profili Düzenle</a>
+        </section>
+
+        <div id="update-message"></div>
+
+        <!-- Modal: Profili Düzenle -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h3>Profili Düzenle</h3>
+                <input type="text" id="edit-username" placeholder="Kullanıcı Adı">
+                <input type="password" id="edit-password" placeholder="Yeni Şifre">
+                <button onclick="updateProfile()">Güncelle</button>
+            </div>
+        </div>
+
+        <!-- Favori Filmler -->
+        <h2 class="section-title">Favori Filmler</h2>
+        <section class="movies">
+            <div class="movie-grid">
+                <!-- Filmler buraya dinamik olarak yüklenecek -->
+            </div>
+        </section>
+
+        <!-- İzleme Geçmişi -->
+        <h2 class="section-title">İzleme Geçmişi</h2>
+        <section class="movies">
+            <div class="movie-grid" id="watch-history-grid">
+                <!-- İzleme geçmişi burada yüklenecek -->
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 DreamWave | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <script>
+        window.onload = function () {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            document.getElementById("user-name").textContent = user.username;
+            document.getElementById("user-username").textContent = "Kullanıcı Adı: @" + user.username;
+            document.getElementById("user-email").textContent = "E-posta: " + user.email;
+
+            loadFavoriteMovies();
+            loadWatchHistory();
+        }
+
+
+        function logoutUser() {
+            localStorage.removeItem("user");
+            window.location.href = "login.html";
+        }
+
+        function openModal() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            document.getElementById("edit-username").value = user.username;
+            document.getElementById("edit-password").value = "";
+            document.getElementById("editModal").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("editModal").style.display = "none";
+        }
+
+        function updateProfile() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            const username = document.getElementById("edit-username").value;
+            const password = document.getElementById("edit-password").value;
+
+            fetch(`http://127.0.0.1:8000/api/update/${user.id}/`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password !== "" ? password : null
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.username) {
+                        localStorage.setItem("user", JSON.stringify({
+                            id: user.id,
+                            username: data.username,
+                            email: data.email
+                        }));
+
+                        document.getElementById("user-name").textContent = data.username;
+                        document.getElementById("user-username").textContent = "Kullanıcı Adı: @" + data.username;
+
+                        closeModal();
+                        showMessage("Profil başarıyla güncellendi.", true);
+                    } else {
+                        showMessage("Güncelleme başarısız: " + data.error, false);
+                    }
+                })
+                .catch(error => {
+                    console.error("Hata:", error);
+                    showMessage("Bir hata oluştu. Lütfen tekrar deneyin.", false);
+                });
+        }
+
+
+        function showMessage(text, success = true) {
+            const messageBox = document.getElementById("update-message");
+            messageBox.textContent = text;
+            messageBox.style.display = "block";
+            messageBox.style.backgroundColor = success ? "#d4edda" : "#f8d7da";
+            messageBox.style.color = success ? "#155724" : "#721c24";
+            messageBox.style.border = success ? "1px solid #c3e6cb" : "1px solid #f5c6cb";
+
+            // 3 saniye sonra mesajı gizle
+            setTimeout(() => {
+                messageBox.style.display = "none";
+            }, 3000);
+        }
+
+        function loadFavoriteMovies() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) return;
+
+            fetch(`http://127.0.0.1:8000/api/favorites/?user_id=${user.id}`)
+                .then(response => response.json())
+                .then(data => {
+                    const favoriteGrid = document.querySelector(".movies .movie-grid");
+                    favoriteGrid.innerHTML = "";
+
+                    if (data.length === 0) {
+                        favoriteGrid.innerHTML = "<p>Henüz favori filminiz yok.</p>";
+                        return;
+                    }
+
+                    data.forEach(fav => {
+                        const movie = fav.movie;
+                        const movieHTML = `
+                    <div class="movie" style="position: relative;">
+                        <button onclick="removeFromFavorites(${movie.id})" class="remove-btn" title="Favorilerden Kaldır">×</button>
+                        <a href="movie.html?id=${movie.id}" style="text-decoration: none; color: inherit;">
+                            <img src="${movie.poster_url}" alt="${movie.title}">
+                            <h3>${movie.title}</h3>
+                            <p>IMDb: ${movie.imdb_rating}</p>
+                        </a>
+                    </div>
+                `;
+                        favoriteGrid.innerHTML += movieHTML;
+                    });
+                })
+                .catch(error => {
+                    console.error("Favori filmler alınamadı:", error);
+                });
+        }
+
+        function loadWatchHistory() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) return;
+
+            fetch(`http://127.0.0.1:8000/api/watch-history/${user.id}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const watchGrid = document.getElementById("watch-history-grid");
+                    watchGrid.innerHTML = "";
+
+                    if (data.length === 0) {
+                        watchGrid.innerHTML = "<p>Henüz izleme geçmişiniz yok.</p>";
+                        return;
+                    }
+
+                    data.forEach(history => {
+                        const movie = history.movie;
+                        const item = `
+                    <div class="movie" style="position: relative;">
+                        <button onclick="removeFromWatchHistory(${movie.id})" class="remove-btn" title="Geçmişten Kaldır">×</button>
+                        <a href="movie.html?id=${movie.id}" style="text-decoration: none; color: inherit;">
+                            <img src="${movie.poster_url}" alt="${movie.title}">
+                            <h3>${movie.title}</h3>
+                            <p>IMDb: ${movie.imdb_rating}</p>
+                            <p style="font-size: 12px; color: #bbb;">İzlendi: ${new Date(history.watched_at).toLocaleDateString('tr-TR')}</p>
+                        </a>
+                    </div>
+                `;
+                        watchGrid.innerHTML += item;
+                    });
+                })
+                .catch(error => {
+                    console.error("İzleme geçmişi alınamadı:", error);
+                });
+        }
+
+        function removeFromFavorites(movieId) {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) return;
+
+            fetch("http://127.0.0.1:8000/api/favorites/delete/", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    movie_id: movieId
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showMessage("Favorilerden kaldırıldı.");
+                    loadFavoriteMovies(); // Listeyi güncelle
+                })
+                .catch(error => {
+                    console.error("Favoriden kaldırma hatası:", error);
+                });
+        }
+
+        function removeFromWatchHistory(movieId) {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) return;
+
+            fetch("http://127.0.0.1:8000/api/watch-history/delete/", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: user.id, movie_id: movieId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showMessage("İzleme geçmişinden kaldırıldı.");
+                    localStorage.removeItem(`watched_movie_${movieId}`); // 👈 localStorage'dan da sil
+                    loadWatchHistory();
+                })
+                .catch(error => {
+                    console.error("İzleme geçmişi silme hatası:", error);
+                });
+        }
+    </script>
+</body>
+
+</html>

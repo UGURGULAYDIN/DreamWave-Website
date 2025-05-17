@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DreamWave - Film İzleme Platformu</title>
+    <link rel="shortcut icon" href="images/dreamwave.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        .movie-row-scroll {
+            display: flex;
+            overflow-x: auto;
+            gap: 1rem;
+            padding: 1rem 1%;
+            scroll-behavior: smooth;
+        }
+
+        .movie-row-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .movie-row-scroll::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .movie-row-scroll::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .movie {
+            flex: 0 0 auto;
+            text-align: center;
+        }
+
+        .scroll-wrapper {
+            position: relative;
+        }
+
+        .scroll-wrapper:hover .scroll-btn {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease;
+        }
+
+        .scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: transparent;
+            color: white;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            z-index: 1;
+            font-size: 2rem;
+            opacity: 0;
+            visibility: hidden;
+            transition:
+                opacity 0.3s ease,
+                transform 2s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .scroll-wrapper:hover .scroll-btn {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-btn:hover {
+            transform: translateY(-50%) scale(1.6);
+        }
+
+        .scroll-btn.left {
+            left: 0.4rem;
+        }
+
+        .scroll-btn.right {
+            right: 0.4rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">DreamWave</a>
+        </h1>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+            <a href="search.html">Keşfet</a>
+            <a href="profile.html">Profil</a>
+            <a href="login.html" id="login-btn" class="login-btn">Giriş Yap</a>
+            <a href="#" id="logout-btn" class="logout-btn" onclick="logoutUser()" style="display:none;">Çıkış Yap</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <main>
+            <!-- Önerilen Filmler -->
+            <section class="movies" id="recommendationSection" style="display: none;">
+                <h2 id="recommendationTitle" style="text-align: left;">Önerilen Filmler</h2>
+                <div class="scroll-wrapper">
+                    <div class="movie-row-scroll" id="recommendationGrid">
+                        <!-- Önerilen filmler buraya gelecek -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Kategorilere Göre Filmler -->
+            <section class="movies" id="genreSection">
+                <div id="genreContainer">
+                    <!-- Her tür için H2 başlığı ve film satırı burada olacak -->
+                </div>
+            </section>
+
+            <!-- Tüm Filmler -->
+            <section class="movies">
+                <h2 id="allMoviesTitle" style="text-align: left;">Tüm Filmler</h2>
+                <div class="movie-grid" id="allMoviesGrid">
+                    <!-- Tüm filmler buraya gelecek -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 DreamWave | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <script>
+        let currentUser = null;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                document.getElementById("login-btn").style.display = "none";
+                document.getElementById("logout-btn").style.display = "inline";
+
+                loadRecommendedMovies(currentUser.id);
+            } else {
+                document.getElementById("login-btn").style.display = "inline";
+                document.getElementById("logout-btn").style.display = "none";
+
+                document.getElementById("recommendationSection").style.display = "none";
+            }
+
+            loadGenreSections();
+            loadMoviesByGenre('');
+        });
+
+        function logoutUser() {
+            localStorage.removeItem("user");
+            window.location.href = "login.html";
+        }
+
+        function loadMoviesByGenre(genre) {
+            const url = genre
+                ? `http://127.0.0.1:8000/api/movies/?genre=${encodeURIComponent(genre)}`
+                : `http://127.0.0.1:8000/api/movies/`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const movieGrid = document.getElementById('allMoviesGrid');
+                    const sectionTitle = document.getElementById('allMoviesTitle');
+                    movieGrid.innerHTML = '';
+
+                    sectionTitle.textContent = genre ? `${genre} Filmleri` : 'Tüm Filmler';
+
+                    if (data.length === 0) {
+                        movieGrid.innerHTML = "<p style='color:#ccc'>Film bulunamadı.</p>";
+                        return;
+                    }
+
+                    data.forEach(movie => {
+                        const movieDiv = document.createElement('div');
+                        movieDiv.className = 'movie';
+                        movieDiv.innerHTML = `
+                    <a href="movie.html?id=${movie.id}" style="text-decoration: none; color: inherit;">
+                        <img src="${movie.poster_url}" alt="${movie.title}">
+                        <h3>${movie.title}</h3>
+                        <p>IMDb: ${movie.imdb_rating}</p>
+                    </a>
+                `;
+                        movieGrid.appendChild(movieDiv);
+                    });
+                })
+                .catch(error => {
+                    console.error('API’den film verileri alınamadı:', error);
+                });
+        }
+
+        function loadRecommendedMovies(userId) {
+            fetch(`http://127.0.0.1:8000/api/recommendations/${userId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const section = document.getElementById("recommendationSection");
+                    const movieGrid = document.getElementById("recommendationGrid");
+                    const sectionTitle = document.getElementById("recommendationTitle");
+                    const scrollWrapper = movieGrid.parentElement;
+
+                    if (data.length === 0) {
+                        section.style.display = "none";
+                        return;
+                    }
+
+                    section.style.display = "block";
+                    sectionTitle.textContent = "Önerilen Filmler";
+                    movieGrid.innerHTML = "";
+
+                    // Önceki butonları temizle
+                    scrollWrapper.querySelectorAll(".scroll-btn").forEach(btn => btn.remove());
+
+                    data.forEach(movie => {
+                        const movieDiv = document.createElement('div');
+                        movieDiv.className = 'movie';
+                        movieDiv.innerHTML = `
+                    <a href="movie.html?id=${movie.id}" style="text-decoration: none; color: inherit;">
+                        <img src="${movie.poster_url}" alt="${movie.title}">
+                        <h3>${movie.title}</h3>
+                        <p>IMDb: ${movie.imdb_rating}</p>
+                    </a>
+                `;
+                        movieGrid.appendChild(movieDiv);
+                    });
+
+                    // Scroll butonlarını ekle
+                    createScrollButtons(scrollWrapper, movieGrid);
+                })
+                .catch(err => {
+                    console.error("Önerilen filmler alınırken hata:", err);
+                });
+        }
+
+        function loadGenreSections() {
+            const genres = [
+                { name: 'Sci-Fi', label: 'Bilim Kurgu' },
+                { name: 'Action', label: 'Aksiyon' },
+                { name: 'Drama', label: 'Dram' },
+                { name: 'Comedy', label: 'Komedi' },
+                { name: 'Horror', label: 'Korku' }
+            ];
+
+            const container = document.getElementById('genreContainer');
+            container.innerHTML = '';
+
+            genres.forEach(genre => {
+                fetch(`http://127.0.0.1:8000/api/movies/?genre=${genre.name}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length === 0) return;
+
+                        const sectionDiv = document.createElement('div');
+                        sectionDiv.className = 'genre-section';
+
+                        const title = document.createElement('h2');
+                        title.textContent = genre.label;
+                        title.style.textAlign = 'left';
+                        title.style.marginTop = '2rem';
+                        title.style.marginBottom = '1rem';
+
+                        const movieRow = document.createElement('div');
+                        movieRow.className = 'movie-row-scroll';
+
+                        data.forEach(movie => {
+                            const movieDiv = document.createElement('div');
+                            movieDiv.className = 'movie';
+                            movieDiv.innerHTML = `
+                        <a href="movie.html?id=${movie.id}" style="text-decoration: none; color: inherit;">
+                            <img src="${movie.poster_url}" alt="${movie.title}">
+                            <h3>${movie.title}</h3>
+                            <p>IMDb: ${movie.imdb_rating}</p>
+                        </a>
+                    `;
+                            movieRow.appendChild(movieDiv);
+                        });
+
+                        const wrapperDiv = document.createElement('div');
+                        wrapperDiv.className = 'scroll-wrapper';
+                        wrapperDiv.appendChild(movieRow);
+                        createScrollButtons(wrapperDiv, movieRow);
+
+                        sectionDiv.appendChild(title);
+                        sectionDiv.appendChild(wrapperDiv);
+                        container.appendChild(sectionDiv);
+                    })
+                    .catch(err => {
+                        console.error(`${genre.name} kategorisi yüklenemedi:`, err);
+                    });
+            });
+        }
+
+        function createScrollButtons(wrapper, scrollElement) {
+            const leftBtn = document.createElement('button');
+            leftBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            leftBtn.className = 'scroll-btn left';
+            leftBtn.onclick = () => scrollElement.scrollBy({ left: -300, behavior: 'smooth' });
+
+            const rightBtn = document.createElement('button');
+            rightBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            rightBtn.className = 'scroll-btn right';
+            rightBtn.onclick = () => scrollElement.scrollBy({ left: 300, behavior: 'smooth' });
+
+            wrapper.appendChild(leftBtn);
+            wrapper.appendChild(rightBtn);
+        }
+    </script>
+</body>
+
+</html>

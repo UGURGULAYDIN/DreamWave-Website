@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DreamWave - Giriş Yap</title>
+    <link rel="shortcut icon" href="images/dreamwave.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">DreamWave</a>
+        </h1>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+            <a href="search.html">Keşfet</a>
+            <a href="profile.html">Profil</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <section class="form-container">
+            <h2>Giriş Yap</h2>
+            <input type="email" id="email" placeholder="E-posta">
+            <input type="password" id="password" placeholder="Şifre">
+            <button onclick="loginUser()">Giriş Yap</button>
+            <p id="login-message" style="color: red;"></p>
+            <p>Hesabın yok mu? <a style="text-decoration: none;" href="register.html"><span
+                        style="color: #ff5733;">Kayıt
+                        Ol</span></a></p>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 DreamWave | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <script>
+        function loginUser() {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const message = document.getElementById("login-message");
+
+            if (!email || !password) {
+                message.textContent = "Lütfen tüm alanları doldurun.";
+                return;
+            }
+
+            fetch("http://127.0.0.1:8000/api/login/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error("Geçersiz giriş");
+                    }
+                })
+                .then(data => {
+                    // Kullanıcı bilgilerini localStorage'da tut
+                    localStorage.setItem("user", JSON.stringify(data));
+                    window.location.href = "profile.html";
+                })
+                .catch(error => {
+                    console.error("Hata:", error);
+                    message.textContent = "E-posta veya şifre hatalı.";
+                });
+        }
+    </script>
+</body>
+
+</html>

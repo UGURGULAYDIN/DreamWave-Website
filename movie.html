@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DreamWave - Film Detayı</title>
+    <link rel="shortcut icon" href="images/dreamwave.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        #update-message {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            width: auto;
+            max-width: 300px;
+            z-index: 1000;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            animation: slide-in 0.3s ease-out;
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <header>
+        <h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">DreamWave</a>
+        </h1>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+            <a href="search.html">Keşfet</a>
+            <a href="profile.html">Profil</a>
+            <a href="login.html" id="login-btn" class="login-btn">Giriş Yap</a>
+            <a href="#" id="logout-btn" class="logout-btn" onclick="logoutUser()" style="display:none;">Çıkış Yap</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <!-- Film Detay Bölümü -->
+        <section class="movie-detail">
+            <h1 id="movieTitle">Film Adı</h1>
+
+            <!-- Film İzleme Alanı -->
+            <section class="movie-player" style="margin-top: 20px;">
+                <div id="youtubePlayer"
+                    style="width: 100%; max-height: 500px; border-radius: 12px; background-color: black;">
+                </div>
+            </section>
+
+            <!-- Poster ve Bilgi alanı yan yana olacak şekilde kapsayıcı -->
+            <div class="movie-content">
+                <div class="movie-poster">
+                    <img id="moviePoster" src="" alt="Film Posteri">
+                </div>
+                <div class="movie-info">
+                    <p><strong>IMDb:</strong>
+                        <span id="movieIMDb">-</span>
+                    </p>
+                    <p><strong>Yönetmen:</strong> <span id="movieDirector">-</span></p>
+                    <p><strong>Yayın Tarihi:</strong> <span id="movieReleaseDate">-</span></p>
+                    <p><strong>Tür:</strong> <span id="movieGenres">Yükleniyor...</span></p>
+                    <p id="movieDescription">Yükleniyor...</p>
+                </div>
+                <div class="movie-actions">
+                    <div class="user-rating-display">
+                        <span class="rating-label">Kullanıcı Ortalaması</span>
+                        <div class="rating-value">
+                            <i class="fa fa-star" style="color: #f5c518;"></i>
+                            <span id="userAvgRating">-</span>
+                        </div>
+                    </div>
+                    <button id="favBtn" class="watchlist-btn">İzleme Listeme Ekle</button>
+                </div>
+            </div>
+        </section>
+
+        <div id="update-message"></div>
+
+        <!-- Yorumlar + Form -->
+        <section class="comments">
+            <h3 style="text-align-last: center;">Kullanıcı Yorumları</h3>
+
+            <!-- Yorum Ekleme Formu -->
+            <div class="comment-form">
+                <h4>Yorum Yap</h4>
+                <label>Puan (1-10):</label>
+                <div class="star-rating" id="starRating">
+                </div>
+                <textarea id="commentInput" placeholder="Yorumunuzu yazın..."></textarea>
+                <button onclick="submitReview()">Gönder</button>
+            </div>
+
+            <!-- AI Yorum Özeti -->
+            <div id="ai-summary-box" class="comment-form">
+                <h4 style="color: #42f59b;">💡 Yapay Zeka Film Özeti</h4>
+                <p id="movieSummary" style="color: #ccc; font-size: 16px; line-height: 1.6;">Yükleniyor...</p>
+            </div>
+
+            <!-- Yorum Listesi -->
+            <div id="reviewList"></div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 DreamWave | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <!-- Film Bilgisi ve Favori Ekleme -->
+    <!-- İLGİLİ KISIMLAR (SCRIPT) -->
+    <script>
+        let currentUser = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const movieId = urlParams.get("id");
+        let selectedRating = 0;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const favBtn = document.getElementById("favBtn");
+
+            favBtn.addEventListener("click", function () {
+                if (!currentUser) {
+                    alert("İzleme listesine eklemek için giriş yapmalısınız.");
+                    return;
+                }
+
+                fetch("http://127.0.0.1:8000/api/favorites/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        movie_id: parseInt(movieId)
+                    })
+                })
+                    .then(res => {
+                        if (!res.ok) throw new Error("Favorilere eklenemedi.");
+                        return res.json();
+                    })
+                    .then(data => {
+                        showMessage("Film izleme listenize eklendi!");
+                        favBtn.innerHTML = `<i class="fas fa-bookmark" style="margin-right: 17px;"></i>İzleme Listemde`;
+                        favBtn.disabled = true;
+                        favBtn.classList.add("added");
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert("Bir hata oluştu, lütfen tekrar deneyin.");
+                    });
+            });
+
+            renderStars();
+
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                document.getElementById("login-btn").style.display = "none";
+                document.getElementById("logout-btn").style.display = "inline";
+            } else {
+                document.getElementById("login-btn").style.display = "inline";
+                document.getElementById("logout-btn").style.display = "none";
+            }
+
+            if (!movieId) {
+                alert("Film ID’si bulunamadı.");
+                return;
+            }
+
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+
+                // Favorilere ekli mi kontrolü
+                fetch(`http://127.0.0.1:8000/api/favorites/user/${currentUser.id}/`)
+                    .then(res => res.json())
+                    .then(favorites => {
+                        const isFavorited = favorites.some(f => parseInt(f.movie.id) === parseInt(movieId));
+                        if (isFavorited) {
+                            favBtn.innerHTML = `<i class="fas fa-bookmark" style="margin-right: 17px;"></i>İzleme Listemde`;
+                            favBtn.disabled = true;
+                            favBtn.classList.add("added");
+                        }
+                    })
+                    .catch(err => console.error("Favoriler yüklenemedi:", err));
+            }
+
+            fetch(`http://127.0.0.1:8000/api/movies/${movieId}/`)
+                .then(response => response.json())
+                .then(movie => {
+                    document.getElementById("moviePoster").src = movie.poster_url;
+                    document.getElementById("moviePoster").alt = movie.title;
+
+                    const videoContainer = document.getElementById("youtubePlayer");
+                    const videoUrl = movie.video_url || "";
+
+                    const watchKey = `watched_movie_${movie.id}`;
+
+                    function sendWatchHistoryOnce() {
+                        if (currentUser && !localStorage.getItem(watchKey)) {
+                            fetch("http://127.0.0.1:8000/api/watch-history/", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    user_id: currentUser.id,
+                                    movie_id: movie.id
+                                })
+                            }).then(res => {
+                                if (res.ok) {
+                                    localStorage.setItem(watchKey, "true");
+                                    console.log("🎬 İzlenme geçmişine eklendi.");
+                                }
+                            }).catch(err => {
+                                console.error("İzlenme geçmişi hatası:", err);
+                            });
+                        }
+                    }
+
+                    if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) {
+                        const videoId = extractYouTubeID(videoUrl);
+                        if (videoId) {
+                            window.onYouTubeIframeAPIReady = function () {
+                                new YT.Player("youtubePlayer", {
+                                    videoId: videoId,
+                                    height: "500",
+                                    width: "100%",
+                                    playerVars: {
+                                        autoplay: 0,
+                                        rel: 0
+                                    },
+                                    events: {
+                                        onStateChange: function (event) {
+                                            if (event.data === YT.PlayerState.PLAYING) {
+                                                const watchKey = `watched_movie_${movie.id}`;
+                                                if (!localStorage.getItem(watchKey) && currentUser) {
+                                                    console.log("⏺️ İzlenme isteği gönderiliyor...");
+                                                    fetch("http://127.0.0.1:8000/api/watch-history/", {
+                                                        method: "POST",
+                                                        headers: {
+                                                            "Content-Type": "application/json"
+                                                        },
+                                                        body: JSON.stringify({
+                                                            user_id: currentUser.id,
+                                                            movie_id: movie.id
+                                                        })
+                                                    })
+                                                        .then(res => res.json())
+                                                        .then(data => {
+                                                            localStorage.setItem(watchKey, "true");
+                                                            console.log("🎬 İzlenme geçmişine eklendi:", data);
+                                                        })
+                                                        .catch(err => {
+                                                            console.error("İzleme geçmişi hatası:", err);
+                                                        });
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            };
+
+                            // iframe API hazır değilse, elle çağır
+                            if (typeof YT === "undefined" || typeof YT.Player === "undefined") {
+                                const tag = document.createElement("script");
+                                tag.src = "https://www.youtube.com/iframe_api";
+                                document.body.appendChild(tag);
+                            } else {
+                                onYouTubeIframeAPIReady(); // YT zaten yüklüyse
+                            }
+                        }
+                    } else if (videoUrl.endsWith(".mp4") || videoUrl.endsWith(".webm")) {
+                        videoContainer.innerHTML = `
+                    <video id="customVideo" controls style="width: 100%; max-height: 500px; border-radius: 12px; background-color: black;">
+                        <source src="${videoUrl}" type="video/mp4">
+                        Tarayıcınız video etiketini desteklemiyor.
+                    </video>`;
+                        const videoElem = document.getElementById("customVideo");
+                        videoElem.addEventListener("play", () => {
+                            sendWatchHistoryOnce();
+                        }, { once: true });
+                    } else {
+                        videoContainer.innerHTML = "<p style='color:white; padding: 10px;'>Video mevcut değil veya desteklenmiyor.</p>";
+                    }
+
+                    document.getElementById("movieTitle").textContent = movie.title;
+                    document.getElementById("movieIMDb").textContent = movie.imdb_rating;
+                    document.getElementById("movieDirector").textContent = movie.director;
+                    document.getElementById("movieReleaseDate").textContent = movie.release_date
+                        ? new Date(movie.release_date).toLocaleDateString('tr-TR', {
+                            year: 'numeric', month: 'long', day: 'numeric'
+                        }) : "Bilinmiyor";
+                    document.getElementById("movieDescription").textContent = movie.description;
+                    document.getElementById("movieGenres").innerHTML =
+                        movie.genres && movie.genres.length > 0
+                            ? movie.genres.map(g => `<span class="genre-tag">${g.name}</span>`).join(" ")
+                            : "Tür bilgisi yok";
+                });
+
+            loadReviews();
+            loadSummary();
+        });
+
+        function logoutUser() {
+            localStorage.removeItem("user");
+            window.location.href = "login.html";
+        }
+
+        function submitReview() {
+            const rating = selectedRating;
+            const comment = document.getElementById("commentInput").value;
+
+            if (!currentUser || !movieId) return alert("Giriş yapmalısınız.");
+            if (!rating || rating < 1 || rating > 10) return alert("1 ile 10 arasında bir puan seçin.");
+
+            fetch("http://127.0.0.1:8000/api/reviews/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: currentUser.id,
+                    movie_id: parseInt(movieId),
+                    rating: rating,
+                    comment: comment
+                })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    selectedRating = 0;
+                    renderStars();
+                    document.getElementById("commentInput").value = "";
+                    loadReviews();
+                });
+        }
+
+        function loadReviews() {
+            fetch("http://127.0.0.1:8000/api/reviews/")
+                .then(res => res.json())
+                .then(reviews => {
+                    const reviewList = document.getElementById("reviewList");
+                    reviewList.innerHTML = "";
+
+                    const filtered = reviews.filter(r => parseInt(r.movie_id || r.movie) === parseInt(movieId));
+
+                    // 👇 Ortalama kullanıcı puanı hesapla
+                    if (filtered.length > 0) {
+                        const totalRating = filtered.reduce((sum, r) => sum + Number(r.rating), 0);
+                        const averageRating = (totalRating / filtered.length).toFixed(1);
+                        document.getElementById("userAvgRating").textContent = averageRating;
+                    } else {
+                        document.getElementById("userAvgRating").textContent = "-";
+                        reviewList.innerHTML = "<p>Henüz yorum yapılmamış.</p>";
+                        return;
+                    }
+
+                    // 👇 Yorumları listele
+                    filtered.forEach(review => {
+                        const avatar = review.user[0]?.toUpperCase() || "U";
+                        const createdAt = new Date(review.created_at).toLocaleString('tr-TR', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+
+                        const div = document.createElement("div");
+                        div.className = "comment";
+                        div.innerHTML = `
+                    <div class="comment-header">
+                        <div class="comment-avatar">${avatar}</div>
+                        <div><strong>${review.user}</strong><br><small class="comment-meta">${createdAt}</small></div>
+                    </div>
+                    <div class="comment-rating-stars">
+                        ${renderStarRating(review.rating)}
+                    </div>
+                    <p>${review.comment || "(Yorum yok)"}</p>
+                    <div class="comment-footer">
+                        <span id="like-btn-${review.id}" class="like-button small-btn" onclick="likeReview(${review.id})">
+                            <i class="far fa-thumbs-up"></i>
+                            <span id="like-count-${review.id}">0</span>
+                        </span>
+                        <span class="reply-toggle small-btn" onclick="toggleReplyInput(${review.id})">
+                            <i class="fa fa-reply" style="margin-right: 6px;"></i>Yanıtla
+                        </span>
+                    </div>
+                    <div id="reply-input-${review.id}" class="reply-form">
+                        <textarea id="reply-text-${review.id}" placeholder="Yanıtınızı yazın..."></textarea>
+                        <button onclick="sendReply(${review.id})">Gönder</button>
+                    </div>
+                    <div id="replies-${review.id}" class="reply-list"></div>
+                `;
+
+                        reviewList.appendChild(div);
+                        loadComments(review.id);
+                        loadLikeCount(review.id);
+                        checkUserLiked(review.id);
+                    });
+                });
+        }
+
+        function toggleReplyInput(id) {
+            const el = document.getElementById(`reply-input-${id}`);
+            el.style.display = el.style.display === "none" || el.style.display === "" ? "block" : "none";
+        }
+
+        function sendReply(reviewId) {
+            const reply = document.getElementById(`reply-text-${reviewId}`).value.trim();
+            if (!reply || !currentUser) return;
+
+            fetch(`http://127.0.0.1:8000/api/reviews/${reviewId}/comments/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: currentUser.id, comment: reply })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    document.getElementById(`reply-text-${reviewId}`).value = "";
+                    toggleReplyInput(reviewId);
+                    loadComments(reviewId);
+                });
+        }
+
+        function likeReview(reviewId) {
+            if (!currentUser) return alert("Beğenmek için giriş yapmalısınız.");
+
+            fetch(`http://127.0.0.1:8000/api/reviews/${reviewId}/like/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: currentUser.id })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    loadLikeCount(reviewId);
+                    checkUserLiked(reviewId);
+                });
+        }
+
+        function loadLikeCount(reviewId) {
+            fetch(`http://127.0.0.1:8000/api/reviews/${reviewId}/likes/count/`)
+                .then(res => res.json())
+                .then(data => {
+                    const likeSpan = document.getElementById(`like-count-${reviewId}`);
+                    if (likeSpan) likeSpan.textContent = data.likes || 0;
+                });
+        }
+
+        function checkUserLiked(reviewId) {
+            if (!currentUser) return;
+
+            fetch(`http://127.0.0.1:8000/api/reviews/${reviewId}/likes/`)
+                .then(res => res.json())
+                .then(data => {
+                    const likeBtn = document.getElementById(`like-btn-${reviewId}`);
+                    const liked = data.users && data.users.includes(currentUser.id);
+
+                    if (likeBtn) {
+                        likeBtn.classList.toggle("liked", liked);
+
+                        const iconClass = liked ? 'fas' : 'far'; // Dolu veya boş el
+                        const likeCount = document.getElementById(`like-count-${reviewId}`)?.textContent || 0;
+
+                        likeBtn.innerHTML = `
+                    <i class="${iconClass} fa-thumbs-up"></i>
+                    <span id="like-count-${reviewId}">${likeCount}</span>
+                `;
+                    }
+                });
+        }
+
+        function loadComments(reviewId) {
+            fetch(`http://127.0.0.1:8000/api/reviews/${reviewId}/comments/list/`)
+                .then(res => res.json())
+                .then(comments => {
+                    const list = document.getElementById(`replies-${reviewId}`);
+                    if (!comments || comments.length === 0) {
+                        list.innerHTML = `<div style="color: #aaa; margin-top: 8px;">Henüz yanıt yok.</div>`;
+                        return;
+                    }
+
+                    list.innerHTML = comments.map(c => {
+                        const avatar = c.user[0]?.toUpperCase() || "U";
+                        const dateStr = new Date(c.created_at).toLocaleString('tr-TR', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+
+                        return `
+                            <div class="reply-item">
+                                <div class="reply-avatar">${avatar}</div>
+                                <div class="reply-content">
+                                    <strong>${c.user}</strong>
+                                    <span class="reply-meta">${dateStr}</span>
+                                    <p>${c.comment}</p>
+                                </div>
+                            </div>
+                        `;
+
+                    }).join("");
+                });
+        }
+
+        function renderStars() {
+            const container = document.getElementById("starRating");
+            container.innerHTML = "";
+
+            for (let i = 1; i <= 10; i++) {
+                const star = document.createElement("i");
+                star.classList.add("fa", "fa-star");
+
+                if (i <= selectedRating) {
+                    star.classList.add("filled");
+                }
+
+                star.addEventListener("mouseover", () => {
+                    highlightStars(i);
+                });
+
+                star.addEventListener("mouseout", () => {
+                    highlightStars(selectedRating);
+                });
+
+                star.addEventListener("click", () => {
+                    selectedRating = i;
+                    renderStars();
+                });
+
+                container.appendChild(star);
+            }
+        }
+
+        function highlightStars(rating) {
+            const stars = document.querySelectorAll("#starRating .fa-star");
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add("hovered");
+                } else {
+                    star.classList.remove("hovered");
+                }
+            });
+        }
+
+        function renderStarRating(rating) {
+            return `
+        <div class="inline-stars" style="display: flex; align-items: center;">
+            <i class="fa fa-star filled" style="color: gold; margin-right: 5px; font-size: 14px; align-items:center;"></i>
+            <span style="color: #gold; font-weight: 500;">${rating}/10</span>
+        </div>
+    `;
+        }
+
+        let ytReady = false;
+
+        window.onYouTubeIframeAPIReady = function () {
+            ytApiLoaded = true;
+        };
+
+        function extractYouTubeID(url) {
+            const regExp = /^.*(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[1].length === 11) ? match[1] : null;
+        }
+
+        function createYouTubePlayer(videoId, watchKey, userId, movieId) {
+            const interval = setInterval(() => {
+                if (typeof YT !== "undefined" && YT.Player && ytApiLoaded) {
+                    clearInterval(interval);
+
+                    new YT.Player("youtubePlayer", {
+                        videoId: videoId,
+                        height: "500",
+                        width: "100%",
+                        playerVars: {
+                            rel: 0,
+                            autoplay: 0
+                        },
+                        events: {
+                            onStateChange: (event) => {
+                                if (event.data === YT.PlayerState.PLAYING) {
+                                    if (!localStorage.getItem(watchKey)) {
+                                        fetch("http://127.0.0.1:8000/api/watch-history/", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                                user_id: userId,
+                                                movie_id: movieId
+                                            })
+                                        }).then(res => {
+                                            if (res.ok) {
+                                                localStorage.setItem(watchKey, "true");
+                                                console.log("🎬 İzlenme geçmişine eklendi.");
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
+        }
+
+        function showMessage(text, success = true) {
+            const messageBox = document.getElementById("update-message");
+            messageBox.textContent = text;
+            messageBox.style.display = "block";
+            messageBox.style.backgroundColor = success ? "#d4edda" : "#f8d7da";
+            messageBox.style.color = success ? "#155724" : "#721c24";
+            messageBox.style.border = success ? "1px solid #c3e6cb" : "1px solid #f5c6cb";
+
+            // 3 saniye sonra mesajı gizle
+            setTimeout(() => {
+                messageBox.style.display = "none";
+            }, 3000);
+        }
+
+        function loadSummary() {
+            fetch(`http://127.0.0.1:8000/api/movies/${movieId}/summary/`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("movieSummary").textContent = data.summary || "Genel görüş bulunamadı.";
+                })
+                .catch(err => {
+                    console.error("AI özeti alınamadı:", err);
+                    document.getElementById("movieSummary").textContent = "Özet yüklenemedi.";
+                });
+        }
+    </script>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+
+</html>

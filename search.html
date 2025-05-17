@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DreamWave - Keşfet</title>
+    <link rel="shortcut icon" href="images/dreamwave.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">DreamWave</a>
+        </h1>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+            <a href="search.html">Keşfet</a>
+            <a href="profile.html">Profil</a>
+            <a href="login.html" id="login-btn" class="login-btn">Giriş Yap</a>
+            <a href="#" id="logout-btn" class="logout-btn" onclick="logoutUser()" style="display:none;">Çıkış Yap</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <!-- Arama Kutusu -->
+        <section class="search">
+            <h2>Film Ara</h2>
+            <input type="text" id="searchInput" placeholder="Film adı girin...">
+            <button onclick="searchMovies()">Ara</button>
+        </section>
+
+        <!-- Filtreleme Alanı -->
+        <section class="filter">
+            <h2>Filtrele</h2>
+            <label for="rating">IMDb Puanı:</label>
+            <select id="rating">
+                <option value="0">Tümü</option>
+                <option value="7">7+</option>
+                <option value="8">8+</option>
+                <option value="9">9+</option>
+            </select>
+
+            <label for="genre">Tür:</label>
+            <select id="genre">
+                <option value="">Tümü</option>
+                <option value="Action">Aksiyon</option>
+                <option value="Comedy">Komedi</option>
+                <option value="Adventure">Macera</option>
+                <option value="Drama">Dram</option>
+                <option value="Sci-Fi">Bilim Kurgu</option>
+                <option value="Horror">Korku</option>
+                <option value="War">Savaş</option>
+                <option value="Music">Müzik</option>
+                <option value="Documentary">Belgesel</option>
+                <option value="Western">Western</option>
+                <option value="Biography">Biyografi</option>
+                <option value="History">Tarih</option>
+                <option value="Fantasy">Fantastik</option>
+                <option value="Film-Noir">Kara Film</option>
+                <option value="Romance">Romantik</option>
+                <option value="Mystery">Gizem</option>
+                <option value="Crime">Suç</option>
+                <option value="Thriller">Gerilim</option>
+            </select>
+
+            <button onclick="searchMovies()">Uygula</button>
+        </section>
+
+        <!-- Arama Sonuçları -->
+        <section class="recommended">
+            <h2>Arama Sonuçları</h2>
+            <div class="movie-grid" id="movieResults">
+                <!-- API'den gelen filmler buraya gelecek -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 DreamWave | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <!-- API Arama Script -->
+    <script>
+        let currentUser = null;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const favBtn = document.getElementById("favBtn");
+
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                document.getElementById("login-btn").style.display = "none";
+                document.getElementById("logout-btn").style.display = "inline";
+            } else {
+                document.getElementById("login-btn").style.display = "inline";
+                document.getElementById("logout-btn").style.display = "none";
+            }
+        });
+
+        function logoutUser() {
+            localStorage.removeItem("user");
+            window.location.href = "login.html";
+        }
+
+        function searchMovies() {
+            const query = document.getElementById("searchInput").value.trim();
+            const minRating = document.getElementById("rating").value;
+            const genre = document.getElementById("genre").value;
+            const resultsContainer = document.getElementById("movieResults");
+
+            let url = `http://127.0.0.1:8000/api/movies/`;
+            const params = [];
+
+            if (query) params.push(`search=${encodeURIComponent(query)}`);
+            if (minRating !== "0") params.push(`min_rating=${minRating}`);
+            if (genre) params.push(`genre=${encodeURIComponent(genre)}`);
+
+            if (params.length > 0) url += `?${params.join("&")}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    resultsContainer.innerHTML = "";
+
+                    if (data.length === 0) {
+                        resultsContainer.innerHTML = "<p style='color:#ccc'>Sonuç bulunamadı.</p>";
+                        return;
+                    }
+
+                    data.forEach(movie => {
+                        const movieCard = document.createElement("div");
+                        movieCard.className = "movie";
+                        movieCard.innerHTML = `
+                    <a href="movie.html?id=${movie.id}" style="text-decoration:none; color:inherit;">
+                        <img src="${movie.poster_url}" alt="${movie.title}">
+                        <h3>${movie.title}</h3>
+                        <p>IMDb: ${movie.imdb_rating}</p>
+                    </a>
+                `;
+                        resultsContainer.appendChild(movieCard);
+                    });
+                })
+                .catch(err => {
+                    resultsContainer.innerHTML = "<p style='color:red;'>Sunucuya ulaşılamadı.</p>";
+                    console.error("Arama hatası:", err);
+                });
+        }
+
+        // Sayfa yüklendiğinde tüm filmleri getir
+        document.addEventListener("DOMContentLoaded", searchMovies);
+    </script>
+</body>
+
+</html>
